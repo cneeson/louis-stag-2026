@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Louis's Stag 2026</title>
+<link rel="icon" type="image/png" href="assets/ainsley.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #0f0f1a; }
+  ::-webkit-scrollbar-thumb { background: #e94560; border-radius: 3px; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #16213e 0%, #0f0f1a 100%);
+    border-bottom: 1px solid rgba(233, 69, 96, 0.3);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    flex-shrink: 0;
+  }
+
+  .header h1 {
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+
+  .header h1 span { color: #e94560; }
+
+  .header .dates {
+    font-size: 0.82rem;
+    color: #8892b0;
+    font-weight: 500;
+  }
+
+  /* Main layout */
+  .main {
+    display: flex;
+    height: calc(100vh - 56px);
+  }
+
+  .left-panel {
+    width: 42%;
+    min-width: 380px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(233, 69, 96, 0.15);
+  }
+
+  .right-panel {
+    flex: 1;
+    position: relative;
+  }
+
+  #map { width: 100%; height: 100%; }
+
+  /* Tabs */
+  .tabs {
+    position: relative;
+    z-index: 60;
+    display: flex;
+    gap: 0;
+    background: #0d0d18;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    flex-shrink: 0;
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 12px 12px 10px;
+    border: none;
+    background: transparent;
+    color: #6c6c80;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.25s ease;
+    border-bottom: 3px solid transparent;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .tab-btn:hover { color: #b0b0c8; background: rgba(233,69,96,0.04); }
+
+  .tab-btn.active {
+    color: #e94560;
+    border-bottom-color: #e94560;
+    background: rgba(233,69,96,0.06);
+  }
+
+  .tab-btn .tab-day {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 400;
+    opacity: 0.7;
+    margin-top: 2px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  /* Scroll area */
+  .itinerary-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 18px 28px 18px 20px;
+  }
+
+  .day-content {
+    display: none;
+    animation: fadeIn 0.35s ease;
+  }
+
+  .day-content.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .day-title {
+    position: relative;
+    z-index: 60;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #e94560;
+    margin-bottom: 14px;
+    padding-left: 4px;
+    letter-spacing: -0.3px;
+  }
+
+  /* ===== Activity Card with Image ===== */
+  .activity-card {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    border-radius: 10px;
+    overflow: visible;
+    background: color-mix(in srgb, var(--card-tint, #2a2a4a) 12%, #0f0f1a);
+    border: 1px solid color-mix(in srgb, var(--card-tint, #2a2a4a) 20%, rgba(255,255,255,0.05));
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    min-height: 88px;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+
+  .activity-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    border-color: color-mix(in srgb, var(--card-tint, #2a2a4a) 40%, rgba(255,255,255,0.1));
+  }
+
+  .activity-card:hover .card-image { transform: scale(1.05); }
+
+  /* Card image */
+  .card-image {
+    position: relative;
+    flex-shrink: 0;
+    width: 110px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: transform 0.4s ease;
+  }
+
+  .card-image::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to right,
+      transparent 0%,
+      transparent 25%,
+      color-mix(in srgb, var(--card-tint, #2a2a4a) 12%, #0f0f1a) 100%
+    );
+    pointer-events: none;
+  }
+
+  .card-image::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--card-tint, #2a2a4a) 15%, transparent);
+    mix-blend-mode: color;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* No-image fallback */
+  .card-image.no-img { width: 0; min-width: 0; }
+  .card-image.no-img::after, .card-image.no-img::before { display: none; }
+
+  /* Marker */
+  .card-marker {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 5;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+    background: color-mix(in srgb, var(--card-tint, #e94560) 55%, #0f0f1a);
+    border: 2px solid rgba(255,255,255,0.25);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+
+  /* Content */
+  .card-content {
+    flex: 1;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    position: relative;
+    z-index: 2;
+  }
+
+  .card-time {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--card-tint, #aaa) 45%, #ccc);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .card-activity {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #f0f0f0;
+    line-height: 1.3;
+  }
+
+  .card-activity a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(233,69,96,0.3);
+    transition: border-color 0.2s;
+  }
+
+  .card-activity a:hover { border-color: #e94560; }
+
+  .card-notes {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.5);
+    line-height: 1.45;
+  }
+
+  .card-notes strong {
+    color: #4ade80;
+    font-weight: 600;
+  }
+
+  /* Museum dropdown */
+  .museum-select-wrapper {
+    position: relative;
+    margin: 6px 0 4px;
+  }
+
+  .museum-select {
+    width: 100%;
+    padding: 9px 30px 9px 12px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(233,69,96,0.25);
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.76rem;
+    font-weight: 500;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .museum-select:hover, .museum-select:focus { border-color: #e94560; }
+
+  .museum-select option {
+    background: #0f0f1a;
+    color: #e0e0e0;
+  }
+
+  .museum-select-wrapper::after {
+    content: '▾';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #e94560;
+    font-size: 0.8rem;
+    pointer-events: none;
+  }
+
+  .museum-info {
+    font-size: 0.7rem;
+    color: #8892b0;
+    margin-top: 4px;
+  }
+
+  .museum-info a {
+    color: #e94560;
+    text-decoration: none;
+  }
+
+  .museum-info a:hover { text-decoration: underline; }
+
+  /* Late night options */
+  .late-options {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  .late-option {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.72rem;
+    padding: 5px 7px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 5px;
+    border: 1px solid rgba(255,255,255,0.03);
+    transition: background 0.15s;
+  }
+
+  .late-option:hover { background: rgba(255,255,255,0.06); }
+
+  .late-option-name a {
+    color: #ccd6f6;
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(233,69,96,0.25);
+  }
+
+  .late-option-name a:hover { border-color: #e94560; }
+
+  .late-option-detail { color: #8892b0; }
+
+  /* Leaflet overrides */
+  .leaflet-popup-content-wrapper {
+    background: #16213e !important;
+    color: #e0e0e0 !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(233,69,96,0.3) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+  }
+
+  .leaflet-popup-tip { background: #16213e !important; }
+
+  .leaflet-popup-content {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.8rem !important;
+    margin: 10px 14px !important;
+  }
+
+  .popup-title { font-weight: 700; color: #fff; margin-bottom: 2px; }
+  .popup-detail { font-size: 0.7rem; color: #8892b0; }
+
+  .leaflet-popup-close-button { color: #8892b0 !important; }
+  .leaflet-popup-close-button:hover { color: #e94560 !important; }
+
+  .leaflet-control-zoom a {
+    background: #16213e !important;
+    color: #e0e0e0 !important;
+    border-color: rgba(255,255,255,0.1) !important;
+  }
+
+  .leaflet-control-attribution {
+    background: rgba(15,15,26,0.8) !important;
+    color: #6c6c80 !important;
+    font-size: 10px !important;
+  }
+
+  .leaflet-control-attribution a { color: #8892b0 !important; }
+
+  /* Tooltip style */
+  .leaflet-tooltip {
+    background: #16213e !important;
+    color: #e0e0e0 !important;
+    border: 1px solid rgba(233,69,96,0.3) !important;
+    border-radius: 6px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.75rem !important;
+    padding: 5px 10px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+  }
+  .leaflet-tooltip-top::before { border-top-color: #16213e !important; }
+  .leaflet-tooltip-bottom::before { border-bottom-color: #16213e !important; }
+
+  /* Louis peek (right side of card) */
+  .card-image { overflow: hidden; }
+  .peek-louis {
+    position: absolute;
+    bottom: -8px;
+    right: -12px;
+    width: 80px;
+    height: auto;
+    transform: translateY(35px) rotate(-90deg) scale(0.3);
+    opacity: 0;
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+    z-index: 61;
+    pointer-events: none;
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
+  }
+  .activity-card:hover .peek-louis,
+  .activity-card.peek-active .peek-louis {
+    transform: translateY(0) rotate(17deg) scale(1);
+    opacity: 1;
+  }
+
+
+  /* Responsive */
+  @media (max-width: 800px) {
+    body { overflow: auto; }
+    .main { flex-direction: column; height: auto; }
+    .left-panel { width: 100%; min-width: unset; border-right: none; }
+    .right-panel { height: 50vh; }
+    .card-image { width: 80px; }
+  }
+
+  @media (max-width: 480px) {
+    .header { padding: 10px 16px; flex-direction: column; align-items: flex-start; gap: 2px; height: auto; }
+    .card-image { width: 0; min-width: 0; }
+    .card-image::after, .card-image::before { display: none; }
+    .card-marker { position: relative; top: auto; left: auto; margin: auto 0 auto 10px; }
+    .activity-card { min-height: 70px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <img src="assets/heMan.gif" alt="" style="height:38px;border-radius:6px;">
+    <h1>Louis's <span>Stag 2026</span></h1>
+  </div>
+  <div class="dates">24 – 26 April 2026</div>
+</div>
+
+<div class="main">
+  <div class="left-panel">
+    <div class="tabs">
+      <button class="tab-btn active" data-day="friday">Friday<span class="tab-day">24th Apr</span></button>
+      <button class="tab-btn" data-day="saturday">Saturday<span class="tab-day">25th Apr</span></button>
+      <button class="tab-btn" data-day="sunday">Sunday<span class="tab-day">26th Apr</span></button>
+    </div>
+
+    <div class="itinerary-scroll">
+
+      <!-- ======== FRIDAY ======== -->
+      <div class="day-content active" id="day-friday">
+        <div class="day-title">Arrive, Explore, Metal</div>
+
+        <div class="activity-card" style="--card-tint: #8B4513;" data-lat="52.3752" data-lng="4.8997">
+          <div class="card-image" style="background-image: url('https://cannibaleroyale.nl/wp-content/uploads/2024/09/Cannibale-Royale_Pathos-Studios_08-11-2022-3-300x200.jpg')"></div>
+          <div class="card-marker">1</div>
+          <div class="card-content">
+            <div class="card-time">12:30 – 13:30</div>
+            <div class="card-activity">Arrive & burgers at <a href="https://cannibaleroyale.nl/locations/lange-niezel/" target="_blank" rel="noopener">Cannibale Royale</a></div>
+            <div class="card-notes">Lange Niezel 15-17, 5 min from Centraal. Smash burgers + craft beer. <strong>€15-25pp</strong></div>
+          </div>
+
+          <img src="assets/sexy-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+
+        <div class="activity-card" style="--card-tint: #2B5F8A;" data-lat="52.3685" data-lng="4.9265">
+          <div class="card-image" style="background-image: url('https://inntelhotels.ams3.cdn.digitaloceanspaces.com/website/optimized/containers/images/innla/2024/exterieur/inntelhotels-amsterdamlandmark-exterieur-2024-2.jpg/db4e5b5a82f27363bb9a1a94b2f133cf/inntelhotels-amsterdamlandmark-exterieur-2024-2.jpg')"></div>
+          <div class="card-marker">2</div>
+          <div class="card-content">
+            <div class="card-time">14:00 – 16:00</div>
+            <div class="card-activity"><a href="https://www.inntelhotels.nl/amsterdamlandmark/en" target="_blank" rel="noopener">Inntel Hotels Amsterdam Landmark</a></div>
+            <div class="card-notes">~25 min walk from Cannibale. Drop bags, check in, freshen up. Oostenburg.</div>
+          </div>
+
+          <img src="assets/orange-order-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+
+        <div class="activity-card" style="--card-tint: #D4A017;" data-lat="52.3745" data-lng="4.8981">
+          <div class="card-image" style="background-image: url('https://www.tontonclub.nl/wp-content/uploads/home-1.jpg')"></div>
+          <div class="card-marker">3</div>
+          <div class="card-content">
+            <div class="card-time">16:30 – 18:00</div>
+            <div class="card-activity"><a href="https://www.tontonclub.nl/en/home/" target="_blank" rel="noopener">TonTon Club Centrum</a></div>
+            <div class="card-notes">~20 min walk from hotel. Retro arcade + Asian street food. Sint Annendwarsstraat 6. Free to play, food <strong>€8-15</strong></div>
+          </div>
+
+          <img src="assets/gaa-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+
+        <div class="activity-card" style="--card-tint: #3B2510;" data-lat="52.3758" data-lng="4.8978">
+          <div class="card-image" style="background-image: url('https://www.amsterdamcraftbeer.com/wp-content/uploads/2015/09/In-de-Wildeman-Amsterdam-Craft-Beer.jpg')"></div>
+          <div class="card-marker">4</div>
+          <div class="card-content">
+            <div class="card-time">18:30 – 20:00</div>
+            <div class="card-activity"><a href="https://www.indewildeman.nl/" target="_blank" rel="noopener">In de Wildeman</a></div>
+            <div class="card-notes">~5 min walk from TonTon. 250+ beers in a 1690 distillery. Candle-lit, no music. Kolksteeg 3. Beers <strong>€4-7</strong></div>
+          </div>
+
+          <img src="assets/smoking-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+
+        <div class="activity-card" style="--card-tint: #4A0E0E;" data-lat="52.3651" data-lng="4.8834">
+          <div class="card-image" style="background-image: url('https://www.thecaveamsterdam.nl/wp-content/uploads/100121-858x1024.avif')"></div>
+          <div class="card-marker">5</div>
+          <div class="card-content">
+            <div class="card-time">20:00 – Late</div>
+            <div class="card-activity"><a href="https://www.thecaveamsterdam.nl/" target="_blank" rel="noopener">The Cave Rock Club</a></div>
+            <div class="card-notes">~15 min walk from Wildeman. THE metal bar. Live bands Fridays. Prinsengracht 472. Free entry, open til 04:00</div>
+          </div>
+
+          <img src="assets/dancing-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+
+        <div class="activity-card" style="--card-tint: #CC7A00;" data-lat="52.3660" data-lng="4.8930">
+          <div class="card-image" style="background-image: url('https://upload.wikimedia.org/wikipedia/commons/4/4f/FEBO%2C_Amsterdam_%28July_2022%29_01.jpg')"></div>
+          <div class="card-marker">🍟</div>
+          <div class="card-content">
+            <div class="card-time">Late</div>
+            <div class="card-activity"><a href="https://www.febo.nl/" target="_blank" rel="noopener">FEBO</a></div>
+            <div class="card-notes">Vending wall drunk food. Coins in, hot snacks out. <strong>€3-7</strong></div>
+          </div>
+
+          <img src="assets/eating-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+      </div>
+
+      <!-- ======== SATURDAY ======== -->
+      <div class="day-content" id="day-saturday">
+        <div class="day-title">Culture, Beer, Big Night Out</div>
+
+        <div class="activity-card" style="--card-tint: #2B5F8A;" data-lat="52.3685" data-lng="4.9265">
+          <div class="card-image" style="background-image: url('https://inntelhotels.ams3.cdn.digitaloceanspaces.com/website/optimized/containers/images/innla/2024/exterieur/inntelhotels-amsterdamlandmark-exterieur-2024-2.jpg/db4e5b5a82f27363bb9a1a94b2f133cf/inntelhotels-amsterdamlandmark-exterieur-2024-2.jpg')"></div>
+          <div class="card-marker">1</div>
+          <div class="card-content">
+            <div class="card-time">09:00</div>
+            <div class="card-activity"><a href="https://www.inntelhotels.nl/amsterdamlandmark/en" target="_blank" rel="noopener">Inntel Hotels Amsterdam Landmark</a></div>
+            <div class="card-notes">Wake up, regroup.</div>
+          </div>
+
+          <img src="assets/topless-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+
+        <div class="activity-card" style="--card-tint: #5B8C5A;" data-lat="52.3694" data-lng="4.9253">
+          <div class="card-image" style="background-image: url('https://lh3.googleusercontent.com/p/AF1QipN_JD9-HJuF19K_kMmL-dZ3u-TcKxUkRkxhVfJg=s1360-w1360-h1020')"></div>
+          <div class="card-marker">2</div>
+          <div class="card-content">
+            <div class="card-time">09:30 – 10:30</div>
+            <div class="card-activity">Brunch at <a href="https://www.czaaramsterdam.nl/" target="_blank" rel="noopener">Cafe Restaurant Czaar</a></div>
+            <div class="card-notes">~5 min walk from hotel. Czaar Peterstraat 281. Terrace, good coffee. <strong>€10-20pp</strong></div>
+          </div>
+
+          <img src="assets/sombrero-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+
+        <div class="activity-card" style="--card-tint: #006B3F;" id="museum-card" data-lat="52.3579" data-lng="4.8914">
+          <div class="card-image" id="museum-image" style="background-image: url('https://upload.wikimedia.org/wikipedia/commons/1/1a/Amsterdam_-_Stadhouderskade_Heineken.jpg')"></div>
+          <div class="card-marker">3</div>
+          <div class="card-content">
+            <div class="card-time">11:00 – 13:00</div>
+            <div class="card-activity">Museum Visit</div>
+            <div class="card-notes">
+              <div class="museum-select-wrapper">
+                <select class="museum-select" id="museum-select">
+                  <option value="heineken" data-lat="52.3579" data-lng="4.8914" data-tint="#006B3F" data-price="€16" data-address="Stadhouderskade 78" data-link="https://www.heinekenexperience.com/en" data-img="https://upload.wikimedia.org/wikipedia/commons/1/1a/Amsterdam_-_Stadhouderskade_Heineken.jpg">Heineken Experience – Brewery tour + 2 beers</option>
+                  <option value="rijks" data-lat="52.3600" data-lng="4.8852" data-tint="#6B3A2E" data-price="€23.50" data-address="Museumstraat 1" data-link="https://www.rijksmuseum.nl/en/tickets" data-img="https://upload.wikimedia.org/wikipedia/commons/2/2d/20130420_Amsterdam_04_Rijksmuseum.JPG">Rijksmuseum – The classic</option>
+                </select>
+              </div>
+              <div class="museum-info" id="museum-info">~20 min by tram 7 from brunch. Stadhouderskade 78 · <strong>€16</strong> · <a href="https://www.heinekenexperience.com/en" target="_blank" rel="noopener">Book tickets</a></div>
+            </div>
+          </div>
+
+          <img src="assets/borat-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+
+        <div class="activity-card" style="--card-tint: #1B4F72;" data-lat="52.3607" data-lng="4.8860">
+          <div class="card-image" style="background-image: url('https://flagshipamsterdam.com/wp-content/uploads/2021/10/Griffioenn-viator-FS-800x450.jpg')"></div>
+          <div class="card-marker">4</div>
+          <div class="card-content">
+            <div class="card-time">13:30 – 14:30</div>
+            <div class="card-activity">Guided Canal Cruise – <a href="https://flagshipamsterdam.com/public-cruises/" target="_blank" rel="noopener">Flagship Amsterdam</a></div>
+            <div class="card-notes">~10 min walk from museum. Live English guide, onboard bar. Departs Museumbrug. 1 hr. <strong>€18pp</strong></div>
+          </div>
+
+          <img src="assets/gaa-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+
+        <div class="activity-card" style="--card-tint: #B8860B;" data-lat="52.3756" data-lng="4.8994">
+          <div class="card-image" style="background-image: url('https://stadsherstel.nl/wp-content/uploads/2020/07/6-en-header-Bij-de-Prael-Sjors-van-Dam-2016.jpg')"></div>
+          <div class="card-marker">5</div>
+          <div class="card-content">
+            <div class="card-time">15:30 – 17:00</div>
+            <div class="card-activity"><a href="https://www.deprael.nl/" target="_blank" rel="noopener">Brouwerij De Prael</a></div>
+            <div class="card-notes">~15 min by tram 2 from cruise. Social mission brewery. Oudezijds Armsteeg 26. Beers <strong>€5-7</strong></div>
+          </div>
+
+          <img src="assets/orange-order-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+
+        <div class="activity-card" style="--card-tint: #C41E3A;" data-lat="52.3754" data-lng="4.9005">
+          <div class="card-image" style="background-image: url('https://restaurantkyo.nl/assets/images/800x975/sashimi-moriawase-800x975.jpg')"></div>
+          <div class="card-marker">6</div>
+          <div class="card-content">
+            <div class="card-time">18:00 – 19:30</div>
+            <div class="card-activity">Dinner at <a href="https://restaurantkyo.nl/" target="_blank" rel="noopener">Restaurant Kyo</a></div>
+            <div class="card-notes">~5 min walk from De Prael. Izakaya dining. Koningsstraat 29. Book ahead! <strong>€30-45pp</strong></div>
+          </div>
+
+          <img src="assets/smoking-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+
+        <div class="activity-card" style="--card-tint: #8B0000;" data-lat="52.3728" data-lng="4.8983">
+          <div class="card-image" style="background-image: url('https://www.excaliburcafe.nl/images/excalibur-cafe.jpg')"></div>
+          <div class="card-marker">7</div>
+          <div class="card-content">
+            <div class="card-time">20:00 – 22:00</div>
+            <div class="card-activity"><a href="https://www.excaliburcafe.nl/" target="_blank" rel="noopener">Excalibur Cafe</a></div>
+            <div class="card-notes">~5 min walk from Kyo. Metal bar + pool. Oudezijds Achterburgwal 48. Beers <strong>€3-5</strong></div>
+          </div>
+
+          <img src="assets/sexy-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+
+        <div class="activity-card" style="--card-tint: #1a0a2e;" data-lat="52.3644" data-lng="4.8819">
+          <div class="card-image" style="background-image: url('https://upload.wikimedia.org/wikipedia/commons/4/41/Amsterdam%2C_Stadsschouwburg_en_Melkweg%2C_Lijnbaansgracht.jpg')"></div>
+          <div class="card-marker">8</div>
+          <div class="card-content">
+            <div class="card-time">22:00 – Late</div>
+            <div class="card-activity">Late Night – Pick Your Poison</div>
+            <div class="card-notes">~20 min walk from Excalibur. The big night out:</div>
+            <div class="late-options">
+              <div class="late-option">
+                <span class="late-option-name"><a href="https://www.melkweg.nl/en/" target="_blank" rel="noopener">Melkweg</a></span>
+                <span class="late-option-detail">Lijnbaansgracht 234a · €10-20 · Club til late</span>
+              </div>
+              <div class="late-option">
+                <span class="late-option-name"><a href="https://www.paradiso.nl/en/" target="_blank" rel="noopener">Paradiso</a></span>
+                <span class="late-option-detail">Weteringschans 6-8 · €10-25 · Converted church</span>
+              </div>
+              <div class="late-option">
+                <span class="late-option-name"><a href="https://www.thecaveamsterdam.nl/" target="_blank" rel="noopener">The Cave Rock Club</a></span>
+                <span class="late-option-detail">Prinsengracht 472 · Free · Metal til 04:00</span>
+              </div>
+              <div class="late-option">
+                <span class="late-option-name"><a href="https://www.bourbonstreet.nl/" target="_blank" rel="noopener">Bourbon Street</a></span>
+                <span class="late-option-detail">Leidsekruisstraat 6-8 · Free · Live rock/blues til 05:00</span>
+              </div>
+              <div class="late-option">
+                <span class="late-option-name"><a href="https://www.maloemelo.com/" target="_blank" rel="noopener">Maloe Melo</a></span>
+                <span class="late-option-detail">Lijnbaansgracht 163 · Live rock/blues nightly</span>
+              </div>
+              <div class="late-option">
+                <span class="late-option-name"><a href="https://www.finddoor74.com/" target="_blank" rel="noopener">Door 74</a></span>
+                <span class="late-option-detail">Reguliersdwarsstraat 74 · Speakeasy · Text: +31 6 34045122</span>
+              </div>
+            </div>
+          </div>
+          <img src="assets/dancing-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+      </div>
+
+      <!-- ======== SUNDAY ======== -->
+      <div class="day-content" id="day-sunday">
+        <div class="day-title">Farewell</div>
+
+        <div class="activity-card" style="--card-tint: #2B5F8A;" data-lat="52.3685" data-lng="4.9265">
+          <div class="card-image" style="background-image: url('https://inntelhotels.ams3.cdn.digitaloceanspaces.com/website/optimized/containers/images/innla/2024/exterieur/inntelhotels-amsterdamlandmark-exterieur-2024-2.jpg/db4e5b5a82f27363bb9a1a94b2f133cf/inntelhotels-amsterdamlandmark-exterieur-2024-2.jpg')"></div>
+          <div class="card-marker">1</div>
+          <div class="card-content">
+            <div class="card-time">Morning</div>
+            <div class="card-activity"><a href="https://www.inntelhotels.nl/amsterdamlandmark/en" target="_blank" rel="noopener">Inntel Hotels Amsterdam Landmark</a></div>
+            <div class="card-notes">Check out. Recover. Pack up.</div>
+          </div>
+          <img src="assets/borat-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+
+        <div class="activity-card" style="--card-tint: #3A3A55;" data-lat="52.3791" data-lng="4.9003">
+          <div class="card-image" style="background-image: url('https://upload.wikimedia.org/wikipedia/commons/e/e7/Amsterdam_centraal_station.JPG')"></div>
+          <div class="card-marker">2</div>
+          <div class="card-content">
+            <div class="card-time">12:15</div>
+            <div class="card-activity">Amsterdam Centraal → Schiphol</div>
+            <div class="card-notes">~10 min by tram 26 from hotel. Train to airport. Flight at 15:05. Safe travels lads.</div>
+          </div>
+          <img src="assets/eating-removebg-preview.png" alt="" class="peek-louis">
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div id="map"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // Touch long-press for peek-louis on mobile
+  var longPressTimer = null;
+  document.querySelectorAll('.activity-card').forEach(function(card) {
+    card.addEventListener('touchstart', function(e) {
+      longPressTimer = setTimeout(function() {
+        card.classList.add('peek-active');
+      }, 300);
+    });
+    card.addEventListener('touchend', function() {
+      clearTimeout(longPressTimer);
+      card.classList.remove('peek-active');
+    });
+    card.addEventListener('touchmove', function() {
+      clearTimeout(longPressTimer);
+      card.classList.remove('peek-active');
+    });
+  });
+  const map = L.map('map', { zoomControl: true }).setView([52.3676, 4.9041], 14);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(map);
+
+  function numIcon(n) {
+    return L.divIcon({
+      className: '',
+      html: '<div style="position:relative;width:44px;height:44px;">' +
+        '<img src="assets/ainsley.png" style="width:44px;height:44px;border-radius:50%;object-fit:cover;object-position:center top;box-shadow:0 2px 10px rgba(0,0,0,0.6);">' +
+        '<div style="position:absolute;top:-6px;right:-6px;background:#e94560;color:#fff;border:2px solid #fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;font-size:10px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.5);">' + n + '</div>' +
+        '</div>',
+      iconSize: [44,44], iconAnchor: [22,22], popupAnchor: [0,-24]
+    });
+  }
+
+  const routes = {
+    friday: [
+      { name: 'Cannibale Royale',  lat: 52.3752, lng: 4.8997, detail: 'Lange Niezel 15-17 · Burgers' },
+      { name: 'Inntel Hotels',     lat: 52.3685, lng: 4.9265, detail: 'Oostenburg · Check in' },
+      { name: 'TonTon Club',       lat: 52.3745, lng: 4.8981, detail: 'Sint Annendwarsstraat 6 · Arcade' },
+      { name: 'In de Wildeman',     lat: 52.3758, lng: 4.8978, detail: 'Kolksteeg 3 · 250+ beers · 1690 distillery' },
+      { name: 'The Cave Rock Club',lat: 52.3651, lng: 4.8834, detail: 'Prinsengracht 472 · Metal til 04:00' }
+    ],
+    saturday: [
+      { name: 'Inntel Hotels',     lat: 52.3685, lng: 4.9265, detail: 'Wake up' },
+      { name: 'Cafe Czaar',        lat: 52.3694, lng: 4.9253, detail: 'Czaar Peterstraat 281 · Brunch' },
+      { name: 'Museum',            lat: 52.3579, lng: 4.8914, detail: 'Museum visit', dynamic: true },
+      { name: 'Flagship Cruise',   lat: 52.3607, lng: 4.8860, detail: 'Museumbrug · Guided canal cruise' },
+      { name: 'Brouwerij De Prael', lat: 52.3756, lng: 4.8994, detail: 'Oudezijds Armsteeg 26 · Brewery' },
+      { name: 'Restaurant Kyo',    lat: 52.3754, lng: 4.9005, detail: 'Koningsstraat 29 · Izakaya' },
+      { name: 'Excalibur Cafe',    lat: 52.3728, lng: 4.8983, detail: 'Metal bar + pool' },
+      { name: 'Late Night',        lat: 52.3644, lng: 4.8819, detail: 'Leidseplein area · Clubs & bars' }
+    ],
+    sunday: [
+      { name: 'Inntel Hotels',       lat: 52.3685, lng: 4.9265, detail: 'Check out' },
+      { name: 'Amsterdam Centraal',   lat: 52.3791, lng: 4.9003, detail: 'Train to Schiphol' }
+    ]
+  };
+
+  let markers = [];
+  let polyline = null;
+  let currentDay = 'friday';
+
+  function clearMap() {
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+    if (polyline) { map.removeLayer(polyline); polyline = null; }
+  }
+
+  function renderRoute(day) {
+    clearMap();
+    const route = JSON.parse(JSON.stringify(routes[day]));
+
+    if (day === 'saturday') {
+      const sel = document.getElementById('museum-select');
+      const opt = sel.options[sel.selectedIndex];
+      route[2].lat = parseFloat(opt.dataset.lat);
+      route[2].lng = parseFloat(opt.dataset.lng);
+      route[2].name = opt.textContent.split('–')[0].trim();
+      route[2].detail = opt.dataset.address;
+    }
+
+    const latlngs = [];
+    route.forEach(function(stop, i) {
+      const ll = [stop.lat, stop.lng];
+      latlngs.push(ll);
+      const m = L.marker(ll, { icon: numIcon(i + 1) }).addTo(map);
+      m.bindTooltip(stop.name, { permanent: true, direction: 'top', offset: [0, -20] });
+      markers.push(m);
+    });
+
+    polyline = L.polyline(latlngs, {
+      color: '#e94560', weight: 2.5, opacity: 0.65, dashArray: '8,8'
+    }).addTo(map);
+
+    if (latlngs.length > 1) {
+      map.fitBounds(L.latLngBounds(latlngs), { padding: [45, 45] });
+    } else if (latlngs.length === 1) {
+      map.setView(latlngs[0], 14);
+    }
+  }
+
+  // Tabs
+  document.querySelectorAll('.tab-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      currentDay = btn.dataset.day;
+      document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      document.querySelectorAll('.day-content').forEach(function(dc) { dc.classList.remove('active'); });
+      var target = document.getElementById('day-' + currentDay);
+      void target.offsetWidth;
+      target.classList.add('active');
+      renderRoute(currentDay);
+    });
+  });
+
+  // Museum dropdown
+  document.getElementById('museum-select').addEventListener('change', function() {
+    var opt = this.options[this.selectedIndex];
+    var card = document.getElementById('museum-card');
+    var info = document.getElementById('museum-info');
+    var img = document.getElementById('museum-image');
+
+    card.style.setProperty('--card-tint', opt.dataset.tint);
+    card.dataset.lat = opt.dataset.lat;
+    card.dataset.lng = opt.dataset.lng;
+    img.style.backgroundImage = "url('" + opt.dataset.img + "')";
+    info.innerHTML = opt.dataset.address + ' · <strong>' + opt.dataset.price + '</strong> · <a href="' + opt.dataset.link + '" target="_blank" rel="noopener">Book tickets</a>';
+
+    if (currentDay === 'saturday') renderRoute('saturday');
+  });
+
+  // Card click → pan map
+  document.querySelectorAll('.activity-card').forEach(function(card) {
+    card.addEventListener('click', function(e) {
+      if (e.target.tagName === 'A' || e.target.tagName === 'SELECT' || e.target.tagName === 'OPTION') return;
+      var lat = parseFloat(card.dataset.lat);
+      var lng = parseFloat(card.dataset.lng);
+      if (isNaN(lat) || isNaN(lng)) return;
+      map.setView([lat, lng], 16, { animate: true });
+      markers.forEach(function(m) {
+        var p = m.getLatLng();
+        if (Math.abs(p.lat - lat) < 0.001 && Math.abs(p.lng - lng) < 0.001) m.openTooltip();
+      });
+    });
+  });
+
+  // Init
+  renderRoute('friday');
+  window.addEventListener('resize', function() { map.invalidateSize(); });
+})();
+</script>
+</body>
+</html>
