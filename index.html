@@ -784,6 +784,26 @@
     if (polyline) { map.removeLayer(polyline); polyline = null; }
   }
 
+  function catmullRom(pts, n) {
+    if (pts.length < 2) return pts;
+    var result = [];
+    // Pad with phantom points for smooth ends
+    var p = [[2*pts[0][0]-pts[1][0], 2*pts[0][1]-pts[1][1]]];
+    p = p.concat(pts);
+    p.push([2*pts[pts.length-1][0]-pts[pts.length-2][0], 2*pts[pts.length-1][1]-pts[pts.length-2][1]]);
+    for (var i = 1; i < p.length - 2; i++) {
+      var p0=p[i-1], p1=p[i], p2=p[i+1], p3=p[i+2];
+      for (var t = 0; t <= n; t++) {
+        var f = t / n;
+        var f2 = f * f, f3 = f2 * f;
+        var lat = 0.5*((-p0[0]+3*p1[0]-3*p2[0]+p3[0])*f3 + (2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*f2 + (-p0[0]+p2[0])*f + 2*p1[0]);
+        var lng = 0.5*((-p0[1]+3*p1[1]-3*p2[1]+p3[1])*f3 + (2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*f2 + (-p0[1]+p2[1])*f + 2*p1[1]);
+        if (t < n || i === p.length - 3) result.push([lat, lng]);
+      }
+    }
+    return result;
+  }
+
   function renderRoute(day) {
     clearMap();
     const route = JSON.parse(JSON.stringify(routes[day]));
@@ -812,9 +832,9 @@
       map.setView(latlngs[0], 14);
     }
 
-    // Draw straight lines between stops
+    // Draw smooth curved lines between stops (Catmull-Rom spline)
     if (latlngs.length > 1) {
-      polyline = L.polyline(latlngs, {
+      polyline = L.polyline(catmullRom(latlngs, 20), {
         color: '#e94560', weight: 3, opacity: 0.7, dashArray: '8,6'
       }).addTo(map);
     }
